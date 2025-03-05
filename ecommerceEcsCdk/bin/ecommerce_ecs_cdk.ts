@@ -5,6 +5,7 @@ import { VPCStack } from '../lib/vpc-stack';
 import { ClusterStack } from '../lib/cluster-stack';
 import { LoadBalancerStack } from '../lib/lb-stack';
 import { ProductsServiceStack } from '../lib/products-service-stack';
+import { ApiStack } from '../lib/api-stack';
 
 const app = new cdk.App();
 
@@ -63,3 +64,11 @@ productsServiceStack.addDependency(clusterStack);
 productsServiceStack.addDependency(vpcStack);
 productsServiceStack.addDependency(ecrStack);
 
+
+const apiStack = new ApiStack(app, 'Api', {
+  tags,
+  env,
+  nlb: lbStack.nlb,
+});
+apiStack.addDependency(lbStack);
+apiStack.addDependency(productsServiceStack);
