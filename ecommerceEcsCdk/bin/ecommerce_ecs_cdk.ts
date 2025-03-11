@@ -72,3 +72,6 @@ const apiStack = new ApiStack(app, 'Api', {
 });
 apiStack.addDependency(lbStack);
 apiStack.addDependency(productsServiceStack);
+
+
+console.log("Api Gateway URL: ", apiStack.apiGatewayUrl);
