@@ -3,7 +3,7 @@ import { DynamoDBDocumentClient, GetCommand, ScanCommand, PutCommand, DeleteComm
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Product, ProductKey } from "./entities/product.entity";
 import { v4 as uuid } from 'uuid';
-
+import { captureAWSv3Client } from 'aws-xray-sdk';
 @Injectable()
 export class ProductsService {
 	private tableName: string;
@@ -11,7 +11,8 @@ export class ProductsService {
 
 	constructor() {
 		this.tableName = process.env.PRODUCTS_DDB;
-		this.ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient());
+		const ddbClient = captureAWSv3Client(new DynamoDBClient());
+		this.ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 	}
 
 	async findAll(): Promise<Product[]> {
@@ -69,7 +70,7 @@ export class ProductsService {
 			const command = new UpdateCommand({
 				TableName: this.tableName,
 				Key: key,
-				UpdateExpression: 'set productName = :n, code = :c, price = :p, model = :m, productUrl: :u',
+				UpdateExpression: 'set productName = :n, code = :c, price = :p, model = :m, productUrl: = :u',
 				ExpressionAttributeValues: {
 					":n": product.productName,
 					":c": product.code,

@@ -6,6 +6,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 interface ProductsServiceStackProps extends cdk.StackProps {
 	vpc: ec2.Vpc;
@@ -38,6 +39,8 @@ export class ProductsServiceStack extends cdk.Stack {
 			family: 'products-service'
 		});
 		productsDdb.grantReadWriteData(taskDefinition.taskRole);
+		taskDefinition.taskRole.addManagedPolicy(
+			iam.ManagedPolicy.fromAwsManagedPolicyName('AwsXrayWriteOnlyAccess'));
 
 		const logDriver = ecs.LogDriver.awsLogs({
 			logGroup: new logs.LogGroup(this, 'LogGroup', {
@@ -49,16 +52,40 @@ export class ProductsServiceStack extends cdk.Stack {
 		});
 
 		taskDefinition.addContainer('ProductsServiceContainer', {
-			image: ecs.ContainerImage.fromEcrRepository(props.repository, "1.1.2"),
+			image: ecs.ContainerImage.fromEcrRepository(props.repository, "1.1.4"),
 			containerName: 'ProductsService',
 			logging: logDriver,
 			portMappings: [
 				{ containerPort: 8080, protocol: ecs.Protocol.TCP }
 			],
+			cpu: 384,
+			memoryLimitMiB: 896,
 			environment: {
-				"PRODUCTS_DDB": productsDdb.tableName,
+				PRODUCTS_DDB: productsDdb.tableName,
+				AWS_XRAY_TRACING_NAME: "products-service",
+				AWS_XRAY_DAEMON_ADDRESS: "0.0.0.0:2000",
+				AWS_XRAY_CONTEXT_MISSING: "IGNORE_ERROR",
 			}
 		});
+
+		taskDefinition.addContainer("Xray", {
+			image: ecs.ContainerImage.fromRegistry("public.ecr.aws/xray/aws-xray-daemon:latest"),
+			containerName: "XrayProductsService",
+			logging: ecs.LogDrivers.awsLogs({
+				logGroup: new logs.LogGroup(this, 'XrayLogGroup', {
+					logGroupName: 'XrayProductsService',
+					removalPolicy: cdk.RemovalPolicy.DESTROY,
+					retention: logs.RetentionDays.ONE_DAY
+				}),
+				streamPrefix: 'XrayProductsService'
+			}),
+			essential: true,
+			cpu: 128,
+			memoryLimitMiB: 256,
+			portMappings: [
+				{ containerPort: 2000, protocol: ecs.Protocol.UDP }
+			],
+		})
 
 		const albListener = props.alb.addListener('ProductsServiceAlbListener', {
 			port: 8080,
@@ -71,6 +98,7 @@ export class ProductsServiceStack extends cdk.Stack {
 			cluster: props.cluster,
 			taskDefinition,
 			desiredCount: 2,
+			minHealthyPercent: 50,
 		});
 
 		props.repository.grantPull(taskDefinition.taskRole);
@@ -90,7 +118,8 @@ export class ProductsServiceStack extends cdk.Stack {
 				port: '8080',
 				timeout: cdk.Duration.seconds(10),
 				path: '/health',
-			}
+			},
+			
 		});
 
 		const nlbListener = props.nlb.addListener('ProductsServiceNlbListener', {
