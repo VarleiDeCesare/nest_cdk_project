@@ -3,7 +3,6 @@ import { Construct } from 'constructs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as iam from 'aws-cdk-lib/aws-iam';
 
 interface ApiStackProps extends cdk.StackProps {
 	nlb: elbv2.NetworkLoadBalancer;
@@ -62,8 +61,57 @@ export class ApiStack extends cdk.Stack {
 			options: {
 				vpcLink,
 				connectionType: apigateway.ConnectionType.VPC_LINK,
+				requestParameters: {
+					'integration.request.header.requestId': 'context.requestId' //moving this value for the application
+				}
 			}
-		}));
+		}), {
+			requestParameters: {
+				"method.request.header.requestId": false, //removing the requestId header from the request/response for the client.
+				"method.request.querystring.code": false, //is not required
+			}
+		});
+
+		const productRequestValidator = new apigateway.RequestValidator(this, 'ProductRequestValidator', {
+			restApi,
+			requestValidatorName: 'Product request Validator',
+			validateRequestBody: true,
+		});
+
+
+		//DISABLED. we do the validation by DTOs on every service.
+		//we can create a body validation model for the requests.. defining the model and then use the requestModels....
+		const productModel = new apigateway.Model(this, 'ProductModel', {
+			restApi,
+			modelName: 'ProductModel',
+			contentType: 'application/json',
+			schema: {
+				type: apigateway.JsonSchemaType.OBJECT,
+				properties: {
+					name: { 
+						type: apigateway.JsonSchemaType.STRING,
+						minLength: 5,
+						maxLength: 50 
+					},
+					code: {
+						type: apigateway.JsonSchemaType.STRING,
+						minLength: 5,
+						maxLength: 15
+					},
+					model: {
+						type: apigateway.JsonSchemaType.STRING,
+						minLength: 5,
+						maxLength: 50
+					},
+					price: {
+						type: apigateway.JsonSchemaType.NUMBER,
+						minimum: 10,
+						maximum: 1000
+					},
+				},
+				required: ['name', 'code'],
+			},
+		});
 
 		//POST /products
 		productsResource.addMethod('POST', new apigateway.Integration({
@@ -73,16 +121,30 @@ export class ApiStack extends cdk.Stack {
 			options: {
 				vpcLink,
 				connectionType: apigateway.ConnectionType.VPC_LINK,
+				requestParameters: {
+					'integration.request.header.requestId': 'context.requestId', //moving this value for the application
+				}
 			}
-		}));
+		}), 
+		{
+			requestParameters: {
+				"method.request.header.requestId": false, //removing the requestId header from the request/response for the client.
+			},
+			requestValidator: productRequestValidator,
+			// requestModels: {
+			// 	'application/json': productModel,
+			// },
+		});
 
 		//products/{id}
 		const productIdResource = productsResource.addResource('{id}');
 		const productIdIntegrationParameters = {
-			'integration.request.path.id': 'method.request.path.id'
+			'integration.request.path.id': 'method.request.path.id', //moving the id value for the application
+			'integration.request.header.requestId': 'context.requestId'
 		};
 		const productIdMethodParameters = {
-			'method.request.path.id': true
+			'method.request.path.id': true,
+			"method.request.header.requestId": false,
 		}
 
 		//GET /products/{id}
@@ -112,7 +174,11 @@ export class ApiStack extends cdk.Stack {
 			}
 		}),
 		{
-			requestParameters: productIdMethodParameters
+			requestParameters: productIdMethodParameters,
+			requestValidator: productRequestValidator,
+			// requestModels: {
+			// 	'application/json': productModel,
+			// },
 		});
 
 

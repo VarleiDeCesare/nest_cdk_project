@@ -7,6 +7,8 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as snsSubs from 'aws-cdk-lib/aws-sns-subscriptions';
 
 interface ProductsServiceStackProps extends cdk.StackProps {
 	vpc: ec2.Vpc;
@@ -17,6 +19,7 @@ interface ProductsServiceStackProps extends cdk.StackProps {
 }
 
 export class ProductsServiceStack extends cdk.Stack {
+	readonly productsTopic : sns.Topic;
 
 	constructor(scope: Construct, id: string, props: ProductsServiceStackProps) {
 		super(scope, id, props);
@@ -33,12 +36,34 @@ export class ProductsServiceStack extends cdk.Stack {
 			writeCapacity: 1,
 		});
 
+		productsDdb.addGlobalSecondaryIndex({
+			indexName: 'codeIdx',
+			partitionKey: {
+				name: 'code',
+				type: dynamodb.AttributeType.STRING
+			},
+			projectionType: dynamodb.ProjectionType.KEYS_ONLY, //id and code
+		});
+
+		this.productsTopic = new sns.Topic(this, 'ProductsEventsTopic', {
+			topicName: 'product-topic',
+			displayName: 'Products events topic',
+		});
+
+		this.productsTopic.addSubscription(
+			new snsSubs.EmailSubscription('varleidecesare2222@gmail.com', {
+				json: true,
+			})
+		);
+
 		const taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDefinition', {
 			memoryLimitMiB: 1024,
 			cpu: 512,
 			family: 'products-service'
 		});
 		productsDdb.grantReadWriteData(taskDefinition.taskRole);
+		this.productsTopic.grantPublish(taskDefinition.taskRole);
+
 		taskDefinition.taskRole.addManagedPolicy(
 			iam.ManagedPolicy.fromAwsManagedPolicyName('AwsXrayWriteOnlyAccess'));
 
@@ -52,7 +77,7 @@ export class ProductsServiceStack extends cdk.Stack {
 		});
 
 		taskDefinition.addContainer('ProductsServiceContainer', {
-			image: ecs.ContainerImage.fromEcrRepository(props.repository, "1.1.4"),
+			image: ecs.ContainerImage.fromEcrRepository(props.repository, "1.1.12"),
 			containerName: 'ProductsService',
 			logging: logDriver,
 			portMappings: [
@@ -65,6 +90,8 @@ export class ProductsServiceStack extends cdk.Stack {
 				AWS_XRAY_TRACING_NAME: "products-service",
 				AWS_XRAY_DAEMON_ADDRESS: "0.0.0.0:2000",
 				AWS_XRAY_CONTEXT_MISSING: "IGNORE_ERROR",
+				LOGGER_LEVEL: "INFO",
+				AWS_SNS_TOPIC_PRODUCT_EVENTS_ARN: this.productsTopic.topicArn,
 			}
 		});
 
