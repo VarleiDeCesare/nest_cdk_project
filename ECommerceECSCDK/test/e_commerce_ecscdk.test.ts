@@ -1,13 +1,13 @@
 // import * as cdk from 'aws-cdk-lib';
 // import { Template } from 'aws-cdk-lib/assertions';
-// import * as EcommerceEcsCdk from '../lib/ecommerce_ecs_cdk-stack';
+// import * as ECommerceEcscdk from '../lib/e_commerce_ecscdk-stack';
 
 // example test. To run these tests, uncomment this file along with the
-// example resource in lib/ecommerce_ecs_cdk-stack.ts
+// example resource in lib/e_commerce_ecscdk-stack.ts
 test('SQS Queue Created', () => {
 //   const app = new cdk.App();
 //     // WHEN
-//   const stack = new EcommerceEcsCdk.EcommerceEcsCdkStack(app, 'MyTestStack');
+//   const stack = new ECommerceEcscdk.ECommerceEcscdkStack(app, 'MyTestStack');
 //     // THEN
 //   const template = Template.fromStack(stack);
 

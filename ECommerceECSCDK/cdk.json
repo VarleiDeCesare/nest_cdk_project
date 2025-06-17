@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/ecommerce_ecs_cdk.ts",
+  "app": "npx ts-node --prefer-ts-exts bin/e_commerce_ecscdk.ts",
   "watch": {
     "include": [
       "**"
@@ -67,21 +67,6 @@
     "@aws-cdk/aws-ec2:ebsDefaultGp3Volume": true,
     "@aws-cdk/aws-ecs:removeDefaultDeploymentAlarm": true,
     "@aws-cdk/custom-resources:logApiResponseDataPropertyTrueDefault": false,
-    "@aws-cdk/aws-s3:keepNotificationInImportedBucket": false,
-    "@aws-cdk/aws-ecs:enableImdsBlockingDeprecatedFeature": false,
-    "@aws-cdk/aws-ecs:disableEcsImdsBlocking": true,
-    "@aws-cdk/aws-ecs:reduceEc2FargateCloudWatchPermissions": true,
-    "@aws-cdk/aws-dynamodb:resourcePolicyPerReplica": true,
-    "@aws-cdk/aws-ec2:ec2SumTImeoutEnabled": true,
-    "@aws-cdk/aws-appsync:appSyncGraphQLAPIScopeLambdaPermission": true,
-    "@aws-cdk/aws-rds:setCorrectValueForDatabaseInstanceReadReplicaInstanceResourceId": true,
-    "@aws-cdk/core:cfnIncludeRejectComplexResourceUpdateCreatePolicyIntrinsics": true,
-    "@aws-cdk/aws-lambda-nodejs:sdkV3ExcludeSmithyPackages": true,
-    "@aws-cdk/aws-stepfunctions-tasks:fixRunEcsTaskPolicy": true,
-    "@aws-cdk/aws-ec2:bastionHostUseAmazonLinux2023ByDefault": true,
-    "@aws-cdk/aws-route53-targets:userPoolDomainNameMethodWithoutCustomResource": true,
-    "@aws-cdk/aws-elasticloadbalancingV2:albDualstackWithoutPublicIpv4SecurityGroupRulesDefault": true,
-    "@aws-cdk/aws-iam:oidcRejectUnauthorizedConnections": true,
-    "@aws-cdk/core:enableAdditionalMetadataCollection": true
+    "@aws-cdk/aws-s3:keepNotificationInImportedBucket": false
   }
 }
